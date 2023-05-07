@@ -14,12 +14,12 @@
 
 @media (max-width: 430px){
   #formchat{
-    transform:scale(0.8);
+    transform:scale(0.83);
   }
 }
 @media (max-width: 350px){
   #formchat{
-    transform:scale(0.7);
+    transform:scale(0.75);
   }
 }
 
