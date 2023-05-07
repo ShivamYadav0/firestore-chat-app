@@ -36,7 +36,7 @@ function Home({ user,logC }) {
     
       </div>
       <ChatHeader username={userData?.username}  logC={logC}/>
-      <div className="flex h-[92vh]">
+      <div className="flex h-[90vh]">
         <div className="w-1/3 max-w-[250px] h-full top-0 bg-gray-200">
           <ChatList
             selectedUser={selectedUser}
