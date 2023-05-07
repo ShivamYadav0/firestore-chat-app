@@ -1,0 +1,179 @@
+#mn {
+  background-color: #aaaaaa;
+  align-items: center;
+
+  width: 100vw;
+
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  padding-top: 50px;
+}
+
+#Lwrap {
+  max-width: 600px;
+  width: 95%;
+  margin: auto;
+}
+#Lwrap #glass {
+  width: 100%;
+  height: 480px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 25px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(3px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  z-index: -99;
+  overflow: hidden;
+}
+
+#c {
+  float: left;
+  margin-top: -500px;
+  margin-left: 4%;
+  z-index: 99;
+  color: #1199ff;
+  font-size: 130%;
+  transition: all 1s ease-in-out;
+}
+#login-box {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  gap: 10px;
+  width: 90%;
+  border-radius: 20px;
+  opacity: 0.9;
+}
+
+#login-box #name,
+#login-box #pass {
+  border: none;
+  border-bottom: 2px solid grey;
+  border-radius: 10px;
+  height: 40px;
+  color: blue;
+  background: none;
+}
+
+#login-box label {
+  z-index: 3;
+  width: 60px;
+  transform: translateY(10px) translateX(0px);
+  color: #ff1111;
+}
+
+#login-box button {
+  margin-top: 50px;
+  width: 100px;
+  color: red;
+  background: #21ff63;
+  box-shadow: 0 0 5px #2196f3, 0 0 5px #2196f3, 0 0 5px #2196f3;
+  border-radius: 10px;
+}
+
+#sign-box {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin: 5px;
+  gap: 5px;
+  width: 100%;
+  border-radius: 20px;
+  opacity: 0.9;
+}
+h1 {
+  font-weight: bold;
+  font-size: 120%;
+}
+
+#sign-box #names,
+#sign-box #passs,
+#sign-box #mail,
+#sign-box #fname {
+  border: none;
+  border-bottom: 2px solid grey;
+  border-radius: 10px;
+  height: 40px;
+  color: blue;
+  background: none;
+}
+
+#sign-box label {
+  z-index: 3;
+  width: 60px;
+  transform: translateY(10px) translateX(0px);
+  color: #ff1111;
+}
+#stcl {
+  transform: translateY(-37px) translateX(130px);
+}
+
+#sign-box button {
+  margin-top: 35px;
+  width: 100px;
+  background: #21ff63;
+  box-shadow: 0 0 5px #2196f3, 0 0 5px #2196f3, 0 0 5px #2196f3;
+  border-radius: 10px;
+  color: red;
+}
+
+#Lwrap #card {
+  opacity: 0.3;
+  float: right;
+  margin-top: 2%;
+  width: 50%;
+  height: 97%;
+  border-radius: 10px;
+}
+@keyframes anm {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-560px);
+  }
+}
+@keyframes anm2 {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-560px);
+  }
+}
+
+#fp {
+  position: absolute;
+  margin-top: 260px;
+  margin-left: 150px;
+}
+#spinn {
+  width: 100px;
+  height: 100px;
+  border-radius: 100%;
+  border: 2px solid blue;
+}
+
+.neonText {
+  color: #fff;
+  text-shadow: 0 0 7px #fff, 0 0 10px #fff, 0 0 21px #fff, 0 0 42px #f09,
+    0 0 82px #f09, 0 0 92px #f09, 0 0 102px #f09, 0 0 151px #f09;
+}
+
+.container {
+  margin-top: 20px;
+  display: block;
+}
+@keyframes pulsate {
+  100% {
+    text-shadow: 0 0 4px #fff, 0 0 11px #fff, 0 0 19px #fff, 0 0 40px #f09,
+      0 0 80px #f09, 0 0 90px #f09, 0 0 100px #f09, 0 0 150px #f09;
+  }
+
+  0% {
+    text-shadow: 0 0 4px #fff, 0 0 10px #fff, 0 0 18px #fff, 0 0 38px #f09,
+      0 0 73px #f09, 0 0 80px #f09, 0 0 94px #f09, 0 0 140px #f09;
+  }
+}
