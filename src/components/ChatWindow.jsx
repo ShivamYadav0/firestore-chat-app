@@ -94,7 +94,7 @@ function ChatWindow({ selectedUser, user }) {
       {/* Messages */}
       <div
         ref={messageListRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-gray-600"
+        className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar"
       >
         {messages.length > 0 ? (
           messages.map((message) => {

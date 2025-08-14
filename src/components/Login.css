@@ -2,7 +2,8 @@
 
 .login-page {
   font-family: "Poppins", sans-serif;
-  background: linear-gradient(135deg, #4b6cb7, #182848);
+background: linear-gradient(135deg, #364acb, #0f162d);
+
   height: 100vh;
   display: flex;
   justify-content: center;
