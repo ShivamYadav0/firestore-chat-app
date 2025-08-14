@@ -7,45 +7,65 @@ import { ClockIcon } from "@heroicons/react/outline";
 import { db } from "./firebase";
 import { doc, getDoc } from "firebase/firestore";
 
-function Home({ user,logC }) {
+function Home({ user, logC }) {
   const [selectedUser, setSelectedUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
     async function fetchData() {
-      // console.log(user);
-      let usersRef = await getDoc(doc(db, "users", user.uid));
-      // console.log(usersRef.data());
-      setUserData(usersRef.data());
-      setIsLoading(false);
-      // setSelectedUser(usersRef.data());
+      try {
+        const usersRef = await getDoc(doc(db, "users", user.uid));
+        setUserData(usersRef.data());
+      } catch (err) {
+        console.error("Error fetching user data:", err);
+      } finally {
+        setIsLoading(false);
+      }
     }
     fetchData();
-  }, []);
+  }, [user.uid]);
+
   return (
-    <div>
-     
-        <div
-          className={`${
-            isLoading ? "block" : "hidden"
-          } absolute top-0 left-0 w-screen h-screen bg-white opacity-75 z-50 flex items-center justify-center`}
-        >
-          <div className="spinner text-blue-600">
-            <ClockIcon className="animate-spin h-6 w-6 text-current" />
+    <div className="flex flex-col h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="flex flex-col items-center">
+            <ClockIcon className="animate-spin h-10 w-10 text-blue-400" />
+            <span className="mt-3 text-sm text-gray-300">Loading your chat...</span>
           </div>
-    
-      </div>
-      <ChatHeader username={userData?.username}  logC={logC}/>
-      <div className="flex h-[90vh]">
-        <div className="w-1/3 max-w-[250px] h-full top-0 bg-gray-200">
+        </div>
+      )}
+
+      {/* Header */}
+      <ChatHeader username={userData?.username} logC={logC} />
+
+      {/* Main Chat Layout */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <div className="hidden md:flex h-full bg-gray-800 border-r border-gray-700 shadow-lg">
           <ChatList
             selectedUser={selectedUser}
             user={user}
-            onSelectUser={(user) => setSelectedUser(user)}
+            onSelectUser={(u) => setSelectedUser(u)}
           />
         </div>
-        <div className="w-2/3 flex-1 h-full bg-gray-100">
-          <ChatWindow selectedUser={selectedUser} user={user} />
+
+        {/* Mobile Sidebar Toggle (optional) */}
+        <div className="md:hidden absolute top-16 left-0 w-full bg-gray-800 z-40">
+          {/* You could add a collapsible ChatList here for mobile */}
+        </div>
+
+        {/* Chat Window */}
+        <div className="flex-1 h-full bg-gray-900">
+          {selectedUser ? (
+            <ChatWindow selectedUser={selectedUser} user={user} />
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-500">
+              Select a user to start chatting
+            </div>
+          )}
         </div>
       </div>
     </div>

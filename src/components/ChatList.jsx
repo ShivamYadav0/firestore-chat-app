@@ -1,256 +1,217 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { db } from "./firebase";
-import { ClockIcon } from "@heroicons/react/outline";
+import { ClockIcon, UserAddIcon, XIcon } from "@heroicons/react/outline";
 import {
   doc,
   getDoc,
   getDocs,
   collection,
-  addDoc,
   setDoc,
   onSnapshot,
 } from "firebase/firestore";
+
 const myMap = new Map();
+
 function ChatList({ selectedUser, onSelectUser, user }) {
-  //console.log("ChatList")
   const [force, setForce] = useState(false);
   const [connectionList, setConnectionList] = useState([]);
   const [usersList, setUsersList] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [isLoadingc, setIsLoadingc] = useState(true);
-  const forceUpdate = () => {
-    setForce(!force);
-  };
+  const forceUpdate = () => setForce((prev) => !prev);
 
-  const addUser = async () => {
-    getDocs(collection(db, "users"))
-      .then((querySnapshot) => {
-        let datau = [];
-        querySnapshot.forEach((doc) => {
-          //console.log(myMap,doc.id);
-          if (myMap.has(doc.id)) {
-          } else {
-            datau.push(doc);
-          }
+  const addUser = useCallback(async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "users"));
+      const datau = querySnapshot.docs.filter((doc) => !myMap.has(doc.id));
+      setUsersList(datau);
+      setForce(true);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
 
-          //setUsersList(()=>[...usersList, doc]);
-          //console.log(usersList);
-        });
-        return datau;
-        //  setUsersList(()=>querySnapshot);
-      })
-      .then((datau) => {
-        setUsersList(() => datau);
-      })
-      .catch((err) => {
-        console.log(err);
-      });
-    setForce(true);
-  };
-  const setUser = async (selected) => {
-    let currentUser = await setDoc(
-      doc(collection(doc(db, "users", user.uid), "connections"), selected.id),
-      {
-        username: selected.data().username,
-        id: selected.id,
-        avatar: selected.data().avatar,
+  const setUser = useCallback(
+    async (selected) => {
+      try {
+        const currentUserRef = doc(
+          collection(doc(db, "users", user.uid), "connections"),
+          selected.id
+        );
+        const selectedUserRef = doc(
+          collection(doc(db, "users", selected.id), "connections"),
+          user.uid
+        );
+
+        const userRefData = await getDoc(doc(db, "users", user.uid));
+
+        await Promise.all([
+          setDoc(currentUserRef, {
+            username: selected.data().username,
+            id: selected.id,
+            avatar: selected.data().avatar,
+          }),
+          setDoc(selectedUserRef, {
+            username: userRefData.data().username,
+            id: user.uid,
+            avatar: userRefData.data().avatar,
+          }),
+        ]);
+
+        myMap.set(selected.id, selected);
+        setForce(false);
+        onSelectUser(selected);
+      } catch (err) {
+        console.error(err);
       }
-    );
-    let userRef = await getDoc(doc(db, "users", user.uid));
-    let selectedUser = await setDoc(
-      doc(collection(doc(db, "users", selected.id), "connections"), user.uid),
-      {
-        username: userRef.data().username,
-        id: user.uid,
-        avatar: userRef.data().avatar,
-      }
-    );
-    myMap.set(selected.id, selected);
-    //setConnectionList([...connectionList, selected]);
-    // console.log("done");
+    },
+    [user.uid, onSelectUser]
+  );
 
-    setForce(false);
-    onSelectUser(selected);
-  };
   useEffect(() => {
-    async function fetchData() {
-      //console.log(user)
-      let useRef = await getDoc(doc(db, "users", user.uid));
-      myMap.set(useRef.id, useRef);
+    const fetchData = async () => {
+      const userRef = await getDoc(doc(db, "users", user.uid));
+      myMap.set(userRef.id, userRef);
 
-      let usersRef = await getDocs(
-        collection(doc(db, "users", user.uid), "connections")
-      );
       const querySnapshot = collection(
         doc(db, "users", user.uid),
         "connections"
       );
 
-      // Loop through the documents
-      let datau = [];
-      let subs = await onSnapshot(querySnapshot, async (snapshot) => {
-        await snapshot.docChanges().forEach((change) => {
-          if (change.type === "added") {
-            //  querySnapshot.forEach(async (change.doc) => {
-            //  console.log("chnge", change.doc.id, " => ", change.doc.data());
-            if (myMap.has(change.doc.id)) {
-            } else datau.push(change.doc);
+      onSnapshot(querySnapshot, (snapshot) => {
+        const newConnections = snapshot
+          .docChanges()
+          .filter(
+            (change) => change.type === "added" && !myMap.has(change.doc.id)
+          )
+          .map((change) => {
             myMap.set(change.doc.id, change.doc.data());
-            //  setForce(!force);
-            //setUsersList(()=>[...usersList, doc]);
-            // console.log(usersList )
-            //setConnectionList(()=>[...connectionList,doc])
-          }
-        });
-        const newArr = [...datau];
-        setConnectionList(() => newArr);
-        setIsLoadingc(false);
-        datau.size = 0;
+            return change.doc;
+          });
+
+        if (newConnections.length > 0) {
+          setConnectionList((prev) => [...prev, ...newConnections]);
+        }
+        setIsLoading(false);
       });
-    }
+    };
     fetchData();
-    return () => {};
-  }, []);
+  }, [user.uid]);
+
+  const renderedConnections = useMemo(
+    () =>
+      connectionList.map((connect) => (
+        <li
+          key={connect.id}
+          className={`flex items-center p-3 rounded-xl shadow-lg border border-transparent backdrop-blur-md transition-all duration-300 cursor-pointer ${
+            selectedUser?.id === connect.id
+              ? "bg-gradient-to-r from-green-500 to-green-700 shadow-green-500/40 scale-[1.02]"
+              : "bg-gray-700/60 hover:bg-gray-600/70 hover:scale-[1.02] hover:shadow-md"
+          }`}
+          onClick={() => onSelectUser(connect)}
+        >
+          <img
+            className="h-10 w-10 rounded-full object-cover border-2 border-white/20 shadow-md"
+            src={connect.data().avatar || "/default-avatar.png"}
+            alt="Avatar"
+          />
+          <span className="ml-4 font-semibold text-white truncate">
+            {connect.data().username}
+          </span>
+        </li>
+      )),
+    [connectionList, selectedUser, onSelectUser]
+  );
 
   return (
-    <div className=" relative  h-full">
-      <div
-        className={`${
-          isLoadingc ? "block" : "hidden"
-        } absolute top-0 left-0 w-full h-screen bg-white opacity-75 z-50 flex items-center justify-center`}
-      >
-        <div className="spinner text-blue-600">
-          <ClockIcon className="animate-spin h-6 w-6 text-current" />
+    <div className="relative h-full bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 p-4 rounded-xs shadow-2xl border border-gray-700">
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
+          <ClockIcon className="animate-spin h-8 w-8 text-blue-400" />
         </div>
-      </div>
+      )}
+
       {connectionList.length > 0 ? (
-        <ul className="p-1 overflow-y-auto max-h-[75%] py-2">
-          {connectionList.map((connect) => (
-            <li
-              key={connect.id}
-              className={`flex items-center p-2 py-2 m-2 rounded-md cursor-pointer ${
-                selectedUser?.id === connect.id
-                  ? "bg-slate-400"
-                  : " bg-gray-300"
-              }`}
-              onClick={() => onSelectUser(connect)}
-            >
-              <div className="h-8 w-8 flex justify-center  items-center rounded-full">
-                <img className="rounded-full" src={connect.data().avatar} />
-              </div>
-              <span className="ml-4 overflow-auto font-semibold">
-                {connect.data().username}
-              </span>
-            </li>
-          ))}
+        <ul className="space-y-3 overflow-y-auto max-h-[70vh] pr-2 custom-scrollbar">
+          {renderedConnections}
         </ul>
       ) : (
-        <p className="p-4">No users available.</p>
+        <div className="text-center text-gray-400 py-8">
+          <UserAddIcon className="mx-auto h-14 w-14 text-gray-500" />
+          <p className="mt-2 text-sm">No users connected yet.</p>
+        </div>
       )}
-      <div
-        onClick={addUser}
-        className="absolute flex-1 bottom-1 bg-slate-500 cursor-pointer hover:bg-cyan-700 w-full p-2 h-15 text-3xl text-blue-300"
-      >
+
+      <div className="mt-4">
         <button
-          type="button"
-          data-modal-target="crypto-modal"
-          data-modal-toggle="crypto-modal"
-          className="text-gray-900 hover:text-red-300 border border-gray-200  focus:outline-none focus:ring-gray-100 font-medium rounded-lg text-sm px-5 py-2 text-center inline-flex items-center dark:focus:ring-gray-600 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700"
+          onClick={addUser}
+          className="w-full py-2 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold shadow-md hover:from-indigo-500 hover:to-blue-600 transition-all"
         >
-          +
+          + Connect
         </button>
       </div>
-      <>
-        {/* Main modal */}
-        <div
-          id="crypto-modal"
-          tabIndex={-1}
-          aria-hidden="true"
-          style={{ display: force ? "flex" : "none" }}
-          className="fixed top-0 left-0 right-0 z-50 flex justify-center items-center w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full"
-        >
-          <div className="relative  w-full max-w-md max-h-full">
-            {/* Modal content */}
-            <div className="relative   bg-white rounded-lg shadow dark:bg-gray-700">
+
+      {force && (
+        <div className="fixed inset-0 z-50 flex justify-center items-center bg-black/60 p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform scale-95 animate-scaleIn">
+            <div className="flex justify-between items-center px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Connect With Users
+              </h3>
               <button
-                type="button"
-                className="absolute top-3 right-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-800 dark:hover:text-white"
-                data-modal-hide="crypto-modal"
                 onClick={forceUpdate}
+                className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
               >
-                <svg
-                  aria-hidden="true"
-                  className="w-5 h-5"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span className="sr-only">Close modal</span>
+                <XIcon className="h-5 w-5 text-gray-500" />
               </button>
-              {/* Modal header */}
-              <div className="px-6 py-4 border-b rounded-t dark:border-gray-600">
-                <h3 className="text-base font-semibold text-gray-900 lg:text-xl dark:text-white">
-                  Connect With These Users
-                </h3>
-              </div>
-              {/* Modal body */}
-              <div className="p-6 h-[50vh]  overflow-auto">
-                <ul className="my-4 space-y-3">
-                  {usersList.map((user) => (
-                    <li
-                      key={user.id}
-                      className={`flex items-center p-2 m-2  hover:bg-cyan-700 rounded-md cursor-pointer ${
-                        selectedUser?.id === user.id
-                          ? "bg-gray-300"
-                          : " bg-slate-400"
-                      }`}
-                      onClick={() => setUser(user)}
-                    >
-                      <div className="h-8 w-8 flex justify-center  items-center rounded-full">
-                        <img
-                          className="rounded-full"
-                          src={user.data().avatar}
-                        />
-                      </div>
-                      <span className="ml-4 overflow-auto font-semibold">
-                        {user.data().username}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <div></div>
-                <a
-                  href="#"
-                  className="inline-flex items-center text-xs font-normal text-gray-500 hover:underline dark:text-gray-400"
+            </div>
+
+            <div className="p-4 max-h-[50vh] overflow-auto custom-scrollbar">
+              {usersList.map((u) => (
+                <div
+                  key={u.id}
+                  className="flex items-center p-2 rounded-lg hover:bg-blue-100 dark:hover:bg-gray-800 cursor-pointer transition-all"
+                  onClick={() => setUser(u)}
                 >
-                  <svg
-                    aria-hidden="true"
-                    className="w-3 h-3 mr-2"
-                    focusable="false"
-                    data-prefix="far"
-                    data-icon="question-circle"
-                    role="img"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 512 512"
-                  >
-                    <path
-                      fill="currentColor"
-                      d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 448c-110.532 0-200-89.431-200-200 0-110.495 89.472-200 200-200 110.491 0 200 89.471 200 200 0 110.53-89.431 200-200 200zm107.244-255.2c0 67.052-72.421 68.084-72.421 92.863V300c0 6.627-5.373 12-12 12h-45.647c-6.627 0-12-5.373-12-12v-8.659c0-35.745 27.1-50.034 47.579-61.516 17.561-9.845 28.324-16.541 28.324-29.579 0-17.246-21.999-28.693-39.784-28.693-23.189 0-33.894 10.977-48.942 29.969-4.057 5.12-11.46 6.071-16.666 2.124l-27.824-21.098c-5.107-3.872-6.251-11.066-2.644-16.363C184.846 131.491 214.94 112 261.794 112c49.071 0 101.45 38.304 101.45 88.8zM298 368c0 23.159-18.841 42-42 42s-42-18.841-42-42 18.841-42 42-42 42 18.841 42 42z"
-                    />
-                  </svg>
-                  {/* Why do I need to connect with my wallet? */}
-                </a>
-              </div>
+                  <img
+                    src={u.data().avatar || "/default-avatar.png"}
+                    className="h-8 w-8 rounded-full object-cover border border-gray-400"
+                  />
+                  <span className="ml-3 font-medium text-gray-900 dark:text-white">
+                    {u.data().username}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
-      </>
+      )}
+
+      <style jsx>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.3);
+          border-radius: 3px;
+        }
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        @keyframes scaleIn {
+          from {
+            transform: scale(0.9);
+          }
+          to {
+            transform: scale(1);
+          }
+        }
+      `}</style>
     </div>
   );
 }
