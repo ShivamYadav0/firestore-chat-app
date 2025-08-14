@@ -27,7 +27,7 @@ function Home({ user, logC }) {
   }, [user.uid]);
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
+    <div className="flex flex-col h-screen custom-scrollbar bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
       {/* Loading Overlay */}
       {isLoading && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
