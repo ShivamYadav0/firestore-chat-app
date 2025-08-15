@@ -10,9 +10,10 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 
-const myMap = new Map();
 
 function ChatList({ selectedUser, onSelectUser, user }) {
+const myMap = new Map();
+
   const [force, setForce] = useState(false);
   const [connectionList, setConnectionList] = useState([]);
   const [usersList, setUsersList] = useState([]);

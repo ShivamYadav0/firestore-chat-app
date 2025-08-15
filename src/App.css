@@ -1,6 +1,12 @@
 *{
   box-sizing: border-box;
 }
+:root {
+  --vh: 100%; /* fallback */
+}
+.full-height {
+  height: calc(var(--vh, 1vh) * 100) !important;
+}
 
 .App {
   text-align: center;

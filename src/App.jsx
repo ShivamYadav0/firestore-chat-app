@@ -70,13 +70,13 @@ function App() {
       <div
         className={`${
           isLoading ? "block" : "hidden"
-        } absolute top-0 left-0 w-screen h-screen bg-white opacity-75 z-50 flex items-center justify-center`}
+        } absolute top-0 left-0 w-screen min-h-screen bg-white opacity-75 z-50 flex items-center justify-center`}
       >
         <div className="spinner text-blue-600">
           <ClockIcon className="animate-spin h-6 w-6 text-current" />
         </div>
       </div>
-      <div className={`${!isLoading ? "block" : "hidden"} App `}>
+      <div className={`${!isLoading ? "block" : "hidden"} App  `}>
         {islog ? <Home user={user} logC={LogC} /> : <Login logC={LogC} />}
       </div>
     </>

@@ -10,8 +10,8 @@ import {
   onSnapshot,
   orderBy,
 } from "firebase/firestore";
-
-function ChatWindow({ selectedUser, user }) {
+import {  ArrowLeftIcon } from "@heroicons/react/outline";
+function ChatWindow({ selectedUser, user,setShowChatWindow }) {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newMessage, setNewMessage] = useState("");
@@ -81,20 +81,47 @@ function ChatWindow({ selectedUser, user }) {
 
     return () => unsubscribe();
   }, [selectedUser, user.uid]);
+const messagesEndRef = useRef(null);
+const inputRef = useRef(null);
+
+function scrollToBottom() {
+  messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+}
+
+useEffect(() => {
+  const el = inputRef.current;
+  if (!el) return;
+
+  const handleFocus = () => {
+    
+    setTimeout(scrollToBottom, 300); // wait for keyboard animation
+  };
+
+  el.addEventListener('focus', handleFocus);
+  return () => el.removeEventListener('focus', handleFocus);
+}, []);
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-b from-gray-900 to-gray-800 text-white">
+    <div className="h-full  flex flex-col  bg-gradient-to-b from-gray-900 to-gray-800 text-white">
       {/* Loader */}
       {isLoading && (
         <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center">
           <ClockIcon className="animate-spin h-8 w-8 text-blue-400" />
         </div>
       )}
-
+{setShowChatWindow&& <div className="p-3 bg-gray-800 flex items-center border-b border-gray-700">
+                <button
+                  onClick={() => setShowChatWindow&&setShowChatWindow(false)}
+                  className="mr-3 p-2 rounded-full hover:bg-gray-700"
+                >
+                  <ArrowLeftIcon className="h-5 w-5 text-white" />
+                </button>
+                <span className="font-semibold">{selectedUser?.data()?.username}</span>
+              </div>}
       {/* Messages */}
       <div
         ref={messageListRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar"
+        className="flex-1 overflow-y-auto  p-4 mb-[70px] md:mb-[70px] space-y-3 custom-scrollbar"
       >
         {messages.length > 0 ? (
           messages.map((message) => {
@@ -132,17 +159,20 @@ function ChatWindow({ selectedUser, user }) {
             {selectedUser ? "No messages yet" : "Select a user to chat."}
           </p>
         )}
+          <div ref={messagesEndRef} />
+
       </div>
 
       {/* Input */}
       {selectedUser && (
-        <div className="p-3 bg-gray-800 border-t border-gray-700 shadow-inner">
+        <div className="p-3 bg-gray-800 fixed bottom-0 right-0 md:left-[225px] border-t border-gray-700 shadow-inner">
           <form
             onSubmit={addMessage}
             className="flex items-center space-x-3 max-w-4xl mx-auto"
           >
             <input
               type="text"
+               ref={inputRef}
               placeholder={`Message ${selectedUser.data().username}`}
               className="flex-1 px-4 py-2 rounded-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none"
               value={newMessage}

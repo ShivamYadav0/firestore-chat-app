@@ -1,4 +1,4 @@
-import { useState} from "react";
+import { useEffect, useState} from "react";
 import "./Login.css";
 import { app, db } from "./firebase.js";
 import { doc, setDoc } from "firebase/firestore";
@@ -57,9 +57,21 @@ export default function Login({ logC }) {
         alert("User already exists, please choose another username.");
       });
   }
+useEffect(() => {
+  function updateHeight() {
+    const vh = window.innerHeight * 0.01; // 1% of viewport height
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+  }
 
+  updateHeight();
+  window.addEventListener('resize', updateHeight);
+
+  return () => {
+    window.removeEventListener('resize', updateHeight);
+  };
+}, []);
   return (
-    <div className="login-page">
+    <div className="login-page full-height">
     <div className="login-container">
       <div className="welcome-text">
         <h1>Welcome to the App</h1>
