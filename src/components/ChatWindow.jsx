@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { db } from "./firebase";
-import { ClockIcon, PaperAirplaneIcon } from "@heroicons/react/outline";
+import { ClockIcon, PaperAirplaneIcon, ArrowLeftIcon } from "@heroicons/react/outline";
 import {
   doc,
   query,
@@ -9,40 +9,47 @@ import {
   addDoc,
   onSnapshot,
   orderBy,
+  updateDoc,
 } from "firebase/firestore";
-import {  ArrowLeftIcon } from "@heroicons/react/outline";
-function ChatWindow({ selectedUser, user,setShowChatWindow }) {
+
+function ChatWindow({ selectedUser, user, setShowChatWindow }) {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newMessage, setNewMessage] = useState("");
   const messageListRef = useRef(null);
+  const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
 
+  // Send message
   const addMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
-
-    const messagesRef = collection(
-      doc(collection(doc(db, "users", user.uid), "connections"), selectedUser.id),
-      "messages"
-    );
+    if (!newMessage.trim() || !selectedUser) return;
 
     try {
-      let usersRef = await getDoc(doc(db, "users", user.uid));
-      const senderName = usersRef.data().username;
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      const senderName = userDoc.data().username;
 
       const newMsg = {
         sender: senderName,
         text: newMessage,
         timestamp: new Date(),
+        readBy: [user.uid], // sender has read it
       };
 
+      // Current user's messages
+      const messagesRef = collection(
+        doc(collection(doc(db, "users", user.uid), "connections"), selectedUser.id),
+        "messages"
+      );
       await addDoc(messagesRef, newMsg);
 
+      // Receiver's messages
       const receiverMessagesRef = collection(
         doc(collection(doc(db, "users", selectedUser.id), "connections"), user.uid),
         "messages"
       );
-      await addDoc(receiverMessagesRef, newMsg);
+      const newMsgForReceiver = { ...newMsg, readBy: [] }; // receiver hasn't read
+      await addDoc(receiverMessagesRef, newMsgForReceiver);
 
       setNewMessage("");
     } catch (err) {
@@ -50,6 +57,25 @@ function ChatWindow({ selectedUser, user,setShowChatWindow }) {
     }
   };
 
+  // Scroll to bottom
+  function scrollToBottom() {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }
+
+  // Scroll input focus
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+
+    const handleFocus = () => {
+      setTimeout(scrollToBottom, 300); // wait for keyboard animation
+    };
+
+    el.addEventListener("focus", handleFocus);
+    return () => el.removeEventListener("focus", handleFocus);
+  }, []);
+
+  // Fetch messages and mark as read
   useEffect(() => {
     if (!selectedUser) {
       setIsLoading(false);
@@ -60,13 +86,12 @@ function ChatWindow({ selectedUser, user,setShowChatWindow }) {
       doc(collection(doc(db, "users", user.uid), "connections"), selectedUser.id),
       "messages"
     );
-
     const q = query(messagesRef, orderBy("timestamp", "asc"));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const msgs = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
       }));
       setMessages(msgs);
       setIsLoading(false);
@@ -77,51 +102,56 @@ function ChatWindow({ selectedUser, user,setShowChatWindow }) {
           behavior: "smooth",
         });
       }, 100);
+
+      // Mark unread messages as read
+      snapshot.docs.forEach(async (docSnap) => {
+        const data = docSnap.data();
+        if (!data.readBy?.includes(user.uid)) {
+          await updateDoc(
+            doc(
+              db,
+              "users",
+              user.uid,
+              "connections",
+              selectedUser.id,
+              "messages",
+              docSnap.id
+            ),
+            { readBy: [...(data.readBy || []), user.uid] }
+          );
+        }
+      });
     });
 
     return () => unsubscribe();
   }, [selectedUser, user.uid]);
-const messagesEndRef = useRef(null);
-const inputRef = useRef(null);
-
-function scrollToBottom() {
-  messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-}
-
-useEffect(() => {
-  const el = inputRef.current;
-  if (!el) return;
-
-  const handleFocus = () => {
-    
-    setTimeout(scrollToBottom, 300); // wait for keyboard animation
-  };
-
-  el.addEventListener('focus', handleFocus);
-  return () => el.removeEventListener('focus', handleFocus);
-}, []);
 
   return (
-    <div className="h-full  flex flex-col  bg-gradient-to-b from-gray-900 to-gray-800 text-white">
+    <div className="h-full flex flex-col bg-gradient-to-b from-gray-900 to-gray-800 text-white relative">
       {/* Loader */}
       {isLoading && (
         <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center">
           <ClockIcon className="animate-spin h-8 w-8 text-blue-400" />
         </div>
       )}
-{setShowChatWindow&& <div className="p-3 bg-gray-800 flex items-center border-b border-gray-700">
-                <button
-                  onClick={() => setShowChatWindow&&setShowChatWindow(false)}
-                  className="mr-3 p-2 rounded-full hover:bg-gray-700"
-                >
-                  <ArrowLeftIcon className="h-5 w-5 text-white" />
-                </button>
-                <span className="font-semibold">{selectedUser?.data()?.username}</span>
-              </div>}
+
+      {/* Header */}
+      {setShowChatWindow && (
+        <div className="p-3 bg-gray-800 flex items-center border-b border-gray-700">
+          <button
+            onClick={() => setShowChatWindow && setShowChatWindow(false)}
+            className="mr-3 p-2 rounded-full hover:bg-gray-700"
+          >
+            <ArrowLeftIcon className="h-5 w-5 text-white" />
+          </button>
+          <span className="font-semibold">{selectedUser?.data()?.username}</span>
+        </div>
+      )}
+
       {/* Messages */}
       <div
         ref={messageListRef}
-        className="flex-1 overflow-y-auto  p-4 mb-[70px] md:mb-[70px] space-y-3 custom-scrollbar"
+        className="flex-1 overflow-y-auto p-4 mb-[70px] md:mb-[70px] space-y-3 custom-scrollbar"
       >
         {messages.length > 0 ? (
           messages.map((message) => {
@@ -159,20 +189,19 @@ useEffect(() => {
             {selectedUser ? "No messages yet" : "Select a user to chat."}
           </p>
         )}
-          <div ref={messagesEndRef} />
-
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
       {selectedUser && (
-        <div className="p-3 bg-gray-800 fixed bottom-0 right-0 md:left-[225px] border-t border-gray-700 shadow-inner">
+        <div className="p-3 bg-gray-800 fixed bottom-0 right-0 md:left-[298px] border-t border-gray-700 shadow-inner">
           <form
             onSubmit={addMessage}
             className="flex items-center space-x-3 max-w-4xl mx-auto"
           >
             <input
               type="text"
-               ref={inputRef}
+              ref={inputRef}
               placeholder={`Message ${selectedUser.data().username}`}
               className="flex-1 px-4 py-2 rounded-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none"
               value={newMessage}

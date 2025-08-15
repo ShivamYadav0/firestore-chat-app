@@ -10,17 +10,18 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 
-
 function ChatList({ selectedUser, onSelectUser, user }) {
-const myMap = new Map();
+  const myMap = new Map();
 
   const [force, setForce] = useState(false);
   const [connectionList, setConnectionList] = useState([]);
   const [usersList, setUsersList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [unreadCounts, setUnreadCounts] = useState({});
 
   const forceUpdate = () => setForce((prev) => !prev);
 
+  // Add users popup
   const addUser = useCallback(async () => {
     try {
       const querySnapshot = await getDocs(collection(db, "users"));
@@ -32,6 +33,7 @@ const myMap = new Map();
     }
   }, []);
 
+  // Set selected user and create connection
   const setUser = useCallback(
     async (selected) => {
       try {
@@ -69,17 +71,15 @@ const myMap = new Map();
     [user.uid, onSelectUser]
   );
 
+  // Fetch connections and track unread messages
   useEffect(() => {
     const fetchData = async () => {
       const userRef = await getDoc(doc(db, "users", user.uid));
       myMap.set(userRef.id, userRef);
 
-      const querySnapshot = collection(
-        doc(db, "users", user.uid),
-        "connections"
-      );
+      const connectionsRef = collection(doc(db, "users", user.uid), "connections");
 
-      onSnapshot(querySnapshot, (snapshot) => {
+      onSnapshot(connectionsRef, async (snapshot) => {
         const newConnections = snapshot
           .docChanges()
           .filter(
@@ -93,35 +93,66 @@ const myMap = new Map();
         if (newConnections.length > 0) {
           setConnectionList((prev) => [...prev, ...newConnections]);
         }
+
+        // Track unread messages for each connection
+        snapshot.docs.forEach(async (docSnap) => {
+          const messagesRef = collection(
+            doc(db, "users", user.uid),
+            "connections",
+            docSnap.id,
+            "messages"
+          );
+          const messagesSnapshot = await getDocs(messagesRef);
+          const unread = messagesSnapshot.docs.filter(
+            (m) =>
+              !m.data().readBy?.includes(user.uid) &&
+              m.data().senderId !== user.uid
+          ).length;
+
+          setUnreadCounts((prev) => ({ ...prev, [docSnap.id]: unread }));
+        });
+
         setIsLoading(false);
       });
     };
     fetchData();
   }, [user.uid]);
 
+  // Render connections with unread badge
   const renderedConnections = useMemo(
     () =>
       connectionList.map((connect) => (
         <li
           key={connect.id}
-          className={`flex items-center p-3 rounded-xl shadow-lg border border-transparent backdrop-blur-md transition-all duration-300 cursor-pointer ${
+          className={`flex md:w-[250px]  items-center  justify-between p-3 rounded-xl shadow-lg border border-transparent backdrop-blur-md transition-all duration-300 cursor-pointer ${
             selectedUser?.id === connect.id
               ? "bg-gradient-to-r from-green-500 to-green-700 shadow-green-500/40 scale-[1.02]"
               : "bg-gray-700/60 hover:bg-gray-600/70 hover:scale-[1.02] hover:shadow-md"
           }`}
-          onClick={() => onSelectUser(connect)}
+          onClick={() => {
+            onSelectUser(connect);
+            setUnreadCounts((prev) => ({ ...prev, [connect.id]: 0 }));
+          }}
         >
-          <img
-            className="h-10 w-10 rounded-full object-cover border-2 border-white/20 shadow-md"
-            src={connect.data().avatar || "/default-avatar.png"}
-            alt="Avatar"
-          />
-          <span className="ml-4 font-semibold text-white truncate">
-            {connect.data().username}
-          </span>
+          <div className="flex items-center">
+            <img
+              className="h-10 w-10 rounded-full object-cover border-2 border-white/20 shadow-md"
+              src={connect.data().avatar || "/default-avatar.png"}
+              alt="Avatar"
+            />
+            <span className="ml-4 font-semibold text-white truncate">
+              {connect.data().username}
+            </span>
+          </div>
+
+          {unreadCounts[connect.id] > 0 && (
+            <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
+              {unreadCounts[connect.id]}
+            </span>
+          )}
         </li>
       )),
-    [connectionList, selectedUser, onSelectUser]
+    [connectionList, selectedUser, unreadCounts, onSelectUser]
   );
 
   return (
